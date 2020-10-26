@@ -56,8 +56,8 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
-//0.00080566
-uint32_t Sine_LUT[NS] = {
+
+uint32_t Sine_LUT[NS] = {	//Sine lookup table
 	2048, 2149, 2250, 2350, 2450, 2549, 2646, 2742, 2837, 2929, 3020, 3108, 3193, 3275, 3355, 3431,
 	3504, 3574, 3639, 3701, 3759, 3812, 3861, 3906, 3946, 3982, 4013, 4039, 4060, 4076, 4087, 4094,
 	4095, 4091, 4082, 4069, 4050, 4026, 3998, 3965, 3927, 3884, 3837, 3786, 3730, 3671, 3607, 3539,
@@ -68,18 +68,7 @@ uint32_t Sine_LUT[NS] = {
 	664, 740, 820, 902, 987, 1075, 1166, 1258, 1353, 1449, 1546, 1645, 1745, 1845, 1946, 2047
 };
 
-uint32_t Saw_LUT[NS] = {
-	32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512,
-	544, 576, 608, 640, 672, 704, 736, 768, 800, 832, 864, 896, 928, 960, 992, 1024,
-	1056, 1088, 1120, 1152, 1184, 1216, 1248, 1280, 1312, 1344, 1376, 1408, 1440, 1472, 1504, 1536,
-	1568, 1600, 1632, 1664, 1696, 1728, 1760, 1792, 1824, 1856, 1888, 1920, 1952, 1984, 2016, 2048,
-	2080, 2112, 2144, 2176, 2208, 2240, 2272, 2304, 2336, 2368, 2400, 2432, 2464, 2496, 2528, 2560,
-	2592, 2624, 2656, 2688, 2720, 2752, 2784, 2816, 2848, 2880, 2912, 2944, 2976, 3008, 3040, 3072,
-	3104, 3136, 3168, 3200, 3232, 3264, 3296, 3328, 3360, 3392, 3424, 3456, 3488, 3520, 3552, 3584,
-	3616, 3648, 3680, 3712, 3744, 3776, 3808, 3840, 3872, 3904, 3936, 3968, 4000, 4032, 4064, 4095
-};
-
-uint32_t Square_LUT[NS] = {
+uint32_t Square_LUT[NS] = {	//Square wave look up table
 	4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
 	4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
 	4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
@@ -90,7 +79,7 @@ uint32_t Square_LUT[NS] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-uint32_t Triangle_LUT[NS] = {
+uint32_t Triangle_LUT[NS] = {	//Triangle wave look up table
 	63, 127, 191, 255, 319, 383, 447, 511, 575, 639, 703, 767, 831, 895, 959, 1023,
 	1087, 1151, 1215, 1279, 1343, 1407, 1471, 1535, 1599, 1663, 1727, 1791, 1855, 1919, 1983, 2047,
 	2111, 2175, 2239, 2303, 2367, 2431, 2495, 2559, 2623, 2687, 2751, 2815, 2879, 2943, 3007, 3071,
@@ -102,7 +91,7 @@ uint32_t Triangle_LUT[NS] = {
 };
 
 uint32_t adc_val = 1;
-uint32_t * LUTs[4] = {Sine_LUT, Saw_LUT, Square_LUT, Triangle_LUT};
+uint32_t * LUTs[3] = {Sine_LUT, Square_LUT, Triangle_LUT};
 
 /* USER CODE END PV */
 
@@ -133,7 +122,9 @@ static void MX_TIM4_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint32_t temp;
+  uint32_t temp = 0;
+  uint32_t last_1 = 0, last_2 = 0, last_3 = 0;
+  uint32_t wave1 = 0, wave2 = 0, wave3 = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -165,7 +156,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);
   HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);
-  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Saw_LUT, 128, DAC_ALIGN_12B_R);
+  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);
   HAL_TIM_Base_Start(&htim2);
   HAL_TIM_Base_Start(&htim3);
   HAL_TIM_Base_Start(&htim4);
@@ -183,6 +174,57 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12)) {
+		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
+			  wave1 = 3;
+		  } else {
+			  wave1 = 2;
+		  }
+	  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
+		  wave1 = 1;
+	  } else {
+		  wave1 = 0;
+	  }
+	  if ((last_1 != wave1) && wave1) {
+		  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);
+		  last_1 = wave1;
+	  }
+
+	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {
+		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
+			  wave2 = 3;
+		  } else {
+			  wave2 = 2;
+		  }
+	  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
+		  wave2 = 1;
+	  } else {
+		  wave2 = 0;
+	  }
+	  if ((last_2 != wave2) && wave2) {
+		  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
+		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);
+		  last_2 = wave2;
+	  }
+
+	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8)) {
+		  if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
+			  wave3 = 3;
+	  	  } else {
+	  		  wave3 = 2;
+	  	  }
+	  } else if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
+		  wave3 = 1;
+	  } else {
+		  wave3 = 0;
+	  }
+	  if ((last_3 != wave3) && wave3) {
+		  HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
+		  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);
+		  last_3 = wave3;
+	  }
+
 	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {
 	        adc_val = HAL_ADC_GetValue(&hadc1);
 	        /*if(!adc_val) {
@@ -681,6 +723,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA8 PA9 PA10 PA11
+                           PA12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
+                          |GPIO_PIN_12;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
