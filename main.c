@@ -90,8 +90,8 @@ uint32_t Triangle_LUT[NS] = {	//Triangle wave look up table
 	960, 896, 832, 768, 704, 640, 576, 512, 448, 384, 320, 256, 192, 128, 64, 0
 };
 
-uint32_t adc_val = 1;
-uint32_t * LUTs[3] = {Sine_LUT, Square_LUT, Triangle_LUT};
+uint32_t adc_val = 1;	//hold adc read value
+uint32_t * LUTs[3] = {Sine_LUT, Square_LUT, Triangle_LUT};	//easy way to switch between waveforms
 
 /* USER CODE END PV */
 
@@ -122,9 +122,9 @@ static void MX_TIM4_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint32_t temp = 0;
-  uint32_t last_1 = 0, last_2 = 0, last_3 = 0;
-  uint32_t wave1 = 0, wave2 = 0, wave3 = 0;
+  uint32_t temp = 0;	//hold ARR calculated value
+  uint32_t last_1 = 0, last_2 = 0, last_3 = 0;	//for wave switching
+  uint32_t wave1 = 0, wave2 = 0, wave3 = 0;		//for wave switching
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -154,15 +154,13 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);
-  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);
-  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);
-  HAL_TIM_Base_Start(&htim2);
-  HAL_TIM_Base_Start(&htim3);
-  HAL_TIM_Base_Start(&htim4);
-  HAL_ADC_Start(&hadc1);
-  //HAL_ADC_Start(&hadc2);
-  //HAL_ADC_Start(&hadc3);
+  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 1 start
+  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 2 start
+  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 3 start
+  HAL_TIM_Base_Start(&htim2);	//start timer for oscillator 1
+  HAL_TIM_Base_Start(&htim3);	//start timer for oscillator 2
+  HAL_TIM_Base_Start(&htim4);	//start timer for oscillator 3
+  HAL_ADC_Start(&hadc1);		//start ADC 1 for inputs to control frequencies
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -174,23 +172,31 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12)) {
+	  //Three *almost* identical if statements to check the GPIO pins for
+	  //each waveform. Two switches for each give us four possible values.
+	  //wave values -
+	  //3: Triangle
+	  //2: Square
+	  //1: Sine
+	  //0: No change in waveform
+	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12)) {	//check pin status, pull-up resistor means switch will pull pin low
 		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
-			  wave1 = 3;
+			  wave1 = 3;	//If both switches are on
 		  } else {
-			  wave1 = 2;
+			  wave1 = 2;	//If only first switch is on
 		  }
 	  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
-		  wave1 = 1;
+		  wave1 = 1;		//If only last switch is on
 	  } else {
-		  wave1 = 0;
+		  wave1 = 0;		//If no switch is on
 	  }
-	  if ((last_1 != wave1) && wave1) {
-		  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);
-		  last_1 = wave1;
+	  if ((last_1 != wave1) && wave1) {		//Check that wave isn't 0, and that the value has changed
+		  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);	//Stop DMA
+		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);	//Start DMA with new look up table
+		  last_1 = wave1;	//set value to remember
 	  }
 
+	  //Same if statement, but for oscillator 2
 	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {
 		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
 			  wave2 = 3;
@@ -208,6 +214,7 @@ int main(void)
 		  last_2 = wave2;
 	  }
 
+	  //same if statement for oscillator 3
 	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8)) {
 		  if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
 			  wave3 = 3;
@@ -225,43 +232,27 @@ int main(void)
 		  last_3 = wave3;
 	  }
 
-	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {
-	        adc_val = HAL_ADC_GetValue(&hadc1);
-	        /*if(!adc_val) {
-	        	HAL_Delay(10);
-	        	HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-	        	HAL_Delay(10);
-	        } else {
-	        	HAL_Delay(10);
-	        	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);
-	        	HAL_Delay(10);
-	        }*/
-	        temp =  80000000/((50 + adc_val) * 128);
-	        htim2.Instance->ARR = temp;
-	        HAL_ADC_Start(&hadc1);
+	  //Three *almost* identical if statements to check ADC value and update frequency
+	  //ADC is configured to have 3 continuous conversions to read 3 different channels.
+	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {	//Check if first ADC conversion is ready for oscillator 1
+	        adc_val = HAL_ADC_GetValue(&hadc1);		//Read ADC value
+	        temp =  80000000/((50 + adc_val) * 128);	//Do calculation to get ARR value for timer
+	        htim2.Instance->ARR = temp;		//Set ARR
+	        HAL_ADC_Start(&hadc1);		//Start ADC to get next conversion
 	  }
-	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {
+	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {	//Conversion for oscillator 2
 	  	        adc_val = HAL_ADC_GetValue(&hadc1);
 	  	        temp =  80000000/((50 + adc_val) * 128);
-	  	        htim3.Instance->ARR = temp;
+	  	        htim3.Instance->ARR = temp;	//Update timer 3 to change oscillator 2 frequency
 	  	        HAL_ADC_Start(&hadc1);
 	  }
-	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {
+	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) { //Conversion for oscillator 3
 	  	        adc_val = HAL_ADC_GetValue(&hadc1);
 	  	        temp =  80000000/((50 + adc_val) * 128);
 	  	        htim4.Instance->ARR = temp;
 	  	        HAL_ADC_Start(&hadc1);
 	  }
-/*	  if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13)) {
-		  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-		  while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13));
-		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[i], 128, DAC_ALIGN_12B_R);
-		  i++;
-		  if (i == 4) {
-			  i = 0;
-		  }
-	  }
-*/  }
+  }
   /* USER CODE END 3 */
 }
 
