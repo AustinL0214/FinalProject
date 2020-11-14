@@ -49,11 +49,11 @@ DMA_HandleTypeDef hdma_dac1_ch1;
 DMA_HandleTypeDef hdma_dac1_ch2;
 DMA_HandleTypeDef hdma_dac2_ch1;
 
-UART_HandleTypeDef hlpuart1;
-
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
@@ -90,8 +90,19 @@ uint32_t Triangle_LUT[NS] = {	//Triangle wave look up table
 	960, 896, 832, 768, 704, 640, 576, 512, 448, 384, 320, 256, 192, 128, 64, 0
 };
 
+uint32_t last_1 = 0, last_2 = 0, last_3 = 0;	//for wave switching
+uint32_t *pl1 = &last_1;
+uint32_t *pl2 = &last_2;
+uint32_t *pl3 = &last_3;
 uint32_t adc_val = 1;	//hold adc read value
 uint32_t * LUTs[3] = {Sine_LUT, Square_LUT, Triangle_LUT};	//easy way to switch between waveforms
+uint8_t Rx_data[10]; //Array to hold MIDI Rx data
+struct Message {
+   uint8_t type;
+   uint8_t channel;
+   uint8_t note;
+   uint8_t velocity;
+};
 
 /* USER CODE END PV */
 
@@ -99,19 +110,24 @@ uint32_t * LUTs[3] = {Sine_LUT, Square_LUT, Triangle_LUT};	//easy way to switch 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_LPUART1_UART_Init(void);
 static void MX_DAC1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_DAC2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
-/* USER CODE BEGIN PFP */
+static void MX_USART1_UART_Init(void);
 
+/* USER CODE BEGIN PFP */
+void SetWaveState(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_USART_RxCpltCallback(UART_HandleTypeDef *huart)	//MIDI receive interrupt handling
+{
+	HAL_UART_Receive_IT(&huart1, Rx_data, 3);	//read 3 bytes from MIDI over UART
+}
 
 /* USER CODE END 0 */
 
@@ -123,8 +139,9 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   uint32_t temp = 0;	//hold ARR calculated value
-  uint32_t last_1 = 0, last_2 = 0, last_3 = 0;	//for wave switching
-  uint32_t wave1 = 0, wave2 = 0, wave3 = 0;		//for wave switching
+  uint32_t reset = 1;
+  float freq = 0;	//for converting midi number to frequency
+  struct Message midi_in;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -146,17 +163,17 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_LPUART1_UART_Init();
   MX_DAC1_Init();
   MX_TIM2_Init();
   MX_ADC1_Init();
   MX_DAC2_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 1 start
-  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 2 start
-  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 3 start
+  //HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 1 start
+  //HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 2 start
+  //HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 3 start
   HAL_TIM_Base_Start(&htim2);	//start timer for oscillator 1
   HAL_TIM_Base_Start(&htim3);	//start timer for oscillator 2
   HAL_TIM_Base_Start(&htim4);	//start timer for oscillator 3
@@ -168,89 +185,91 @@ int main(void)
 
   while (1)
   {
-  	//htim2.Instance->ARR = 80000000/((58) * 128);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //Three *almost* identical if statements to check the GPIO pins for
-	  //each waveform. Two switches for each give us four possible values.
-	  //wave values -
-	  //3: Triangle
-	  //2: Square
-	  //1: Sine
-	  //0: No change in waveform
-	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12)) {	//check pin status, pull-up resistor means switch will pull pin low
-		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
-			  wave1 = 3;	//If both switches are on
-		  } else {
-			  wave1 = 2;	//If only first switch is on
+	  // MIDI Mode
+	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8)) {
+		  if (reset) {
+			  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+			  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
+			  HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
+			  reset = 0;
 		  }
-	  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
-		  wave1 = 1;		//If only last switch is on
-	  } else {
-		  wave1 = 0;		//If no switch is on
-	  }
-	  if ((last_1 != wave1) && wave1) {		//Check that wave isn't 0, and that the value has changed
-		  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);	//Stop DMA
-		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);	//Start DMA with new look up table
-		  last_1 = wave1;	//set value to remember
-	  }
-
-	  //Same if statement, but for oscillator 2
-	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {
-		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
-			  wave2 = 3;
-		  } else {
-			  wave2 = 2;
+		  SetWaveState();
+		  HAL_UART_Receive_IT(&huart1, Rx_data, 3);
+		  midi_in.type = Rx_data[0] & 0xF0;
+		  midi_in.channel = Rx_data[0] & 0x0F;
+		  midi_in.note = Rx_data[1];
+		  midi_in.velocity = Rx_data[2];
+		  if(midi_in.type == 0x90) {
+			  freq = pow(2, (((float)midi_in.note-69)/12)) * 440;
+			  switch (midi_in.channel) {
+				  case 0:
+					  htim2.Instance->ARR = 80000000/((50 + freq) * 128);
+					  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
+					  break;
+				  case 1:
+					  htim3.Instance->ARR = 80000000/((50 + freq) * 128);
+					  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
+					  break;
+				  case 2:
+					  htim4.Instance->ARR = 80000000/((50 + freq) * 128);
+					  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
+					  break;
+			  }
 		  }
-	  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
-		  wave2 = 1;
-	  } else {
-		  wave2 = 0;
-	  }
-	  if ((last_2 != wave2) && wave2) {
-		  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
-		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);
-		  last_2 = wave2;
-	  }
-
-	  //same if statement for oscillator 3
-	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8)) {
-		  if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
-			  wave3 = 3;
-	  	  } else {
-	  		  wave3 = 2;
-	  	  }
-	  } else if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
-		  wave3 = 1;
-	  } else {
-		  wave3 = 0;
-	  }
-	  if ((last_3 != wave3) && wave3) {
-		  HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
-		  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);
-		  last_3 = wave3;
+		  if(midi_in.type == 0x80 || midi_in.velocity == 0x00) {
+			  switch (midi_in.channel) {
+				  case 0:
+					  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+					  break;
+				  case 1:
+					  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
+					  break;
+				  case 2:
+					  HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
+					  break;
+				}
+		  }
 	  }
 
-	  //Three *almost* identical if statements to check ADC value and update frequency
-	  //ADC is configured to have 3 continuous conversions to read 3 different channels.
-	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {	//Check if first ADC conversion is ready for oscillator 1
-	        adc_val = HAL_ADC_GetValue(&hadc1);		//Read ADC value
-	        temp =  80000000/((50 + adc_val) * 128);	//Do calculation to get ARR value for timer
-	        htim2.Instance->ARR = temp;		//Set ARR
-	        HAL_ADC_Start(&hadc1);		//Start ADC to get next conversion
-	  }
-	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {	//Conversion for oscillator 2
-	  	        adc_val = HAL_ADC_GetValue(&hadc1);
-	  	        temp =  80000000/((50 + adc_val) * 128);
-	  	        htim3.Instance->ARR = temp;	//Update timer 3 to change oscillator 2 frequency
-	  	        HAL_ADC_Start(&hadc1);
-	  }
-	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) { //Conversion for oscillator 3
-	  	        adc_val = HAL_ADC_GetValue(&hadc1);
-	  	        temp =  80000000/((50 + adc_val) * 128);
-	  	        htim4.Instance->ARR = temp;
-	  	        HAL_ADC_Start(&hadc1);
+
+	  //Control Voltage Mode
+	  if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8)) {
+		  reset = 1;
+		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 1 start
+		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 2 start
+		  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 3 start
+		  //Three *almost* identical if statements to check the GPIO pins for
+		  //each waveform. Two switches for each give us four possible values.
+		  //wave values -
+		  //3: Triangle
+		  //2: Square
+		  //1: Sine
+		  //0: No change in waveform
+		  SetWaveState();
+
+		  //Three *almost* identical if statements to check ADC value and update frequency
+		  //ADC is configured to have 3 continuous conversions to read 3 different channels.
+		  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {	//Check if first ADC conversion is ready for oscillator 1
+				adc_val = HAL_ADC_GetValue(&hadc1);		//Read ADC value
+				temp =  80000000/((50 + adc_val) * 128);	//Do calculation to get ARR value for timer
+				htim2.Instance->ARR = temp;		//Set ARR
+				HAL_ADC_Start(&hadc1);		//Start ADC to get next conversion
+		  }
+		  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {	//Conversion for oscillator 2
+					adc_val = HAL_ADC_GetValue(&hadc1);
+					temp =  80000000/((50 + adc_val) * 128);
+					htim3.Instance->ARR = temp;	//Update timer 3 to change oscillator 2 frequency
+					HAL_ADC_Start(&hadc1);
+		  }
+		  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) { //Conversion for oscillator 3
+					adc_val = HAL_ADC_GetValue(&hadc1);
+					temp =  80000000/((50 + adc_val) * 128);
+					htim4.Instance->ARR = temp;
+					HAL_ADC_Start(&hadc1);
+		  }
 	  }
   }
   /* USER CODE END 3 */
@@ -301,8 +320,8 @@ void SystemClock_Config(void)
   }
   /** Initializes the peripherals clocks
   */
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_ADC12;
-  PeriphClkInit.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_ADC12;
+  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
   PeriphClkInit.Adc12ClockSelection = RCC_ADC12CLKSOURCE_SYSCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
@@ -491,52 +510,6 @@ static void MX_DAC2_Init(void)
 }
 
 /**
-  * @brief LPUART1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_LPUART1_UART_Init(void)
-{
-
-  /* USER CODE BEGIN LPUART1_Init 0 */
-
-  /* USER CODE END LPUART1_Init 0 */
-
-  /* USER CODE BEGIN LPUART1_Init 1 */
-
-  /* USER CODE END LPUART1_Init 1 */
-  hlpuart1.Instance = LPUART1;
-  hlpuart1.Init.BaudRate = 115200;
-  hlpuart1.Init.WordLength = UART_WORDLENGTH_8B;
-  hlpuart1.Init.StopBits = UART_STOPBITS_1;
-  hlpuart1.Init.Parity = UART_PARITY_NONE;
-  hlpuart1.Init.Mode = UART_MODE_TX_RX;
-  hlpuart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  hlpuart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  hlpuart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&hlpuart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetTxFifoThreshold(&hlpuart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetRxFifoThreshold(&hlpuart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_DisableFifoMode(&hlpuart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN LPUART1_Init 2 */
-
-  /* USER CODE END LPUART1_Init 2 */
-
-}
-
-/**
   * @brief TIM2 Initialization Function
   * @param None
   * @retval None
@@ -672,6 +645,54 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 31250;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -715,8 +736,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PC9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_9;
+  /*Configure GPIO pins : LPUART1_TX_Pin LPUART1_RX_Pin */
+  GPIO_InitStruct.Pin = LPUART1_TX_Pin|LPUART1_RX_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF12_LPUART1;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PC8 PC9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -736,7 +765,72 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void SetWaveState(void) {
 
+	  uint32_t wave1 = 0, wave2 = 0, wave3 = 0;		//for wave switching
+	  //Three *almost* identical if statements to check the GPIO pins for
+	  //each waveform. Two switches for each give us four possible values.
+	  //wave values -
+	  //3: Triangle
+	  //2: Square
+	  //1: Sine
+	  //0: No change in waveform
+
+	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12)) {	//check pin status, pull-up resistor means switch will pull pin low
+			  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
+				  wave1 = 3;	//If both switches are on
+			  } else {
+				  wave1 = 2;	//If only first switch is on
+			  }
+		  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
+			  wave1 = 1;		//If only last switch is on
+		  } else {
+			  wave1 = 0;		//If no switch is on
+		  }
+		  if ((*pl1 != wave1) && wave1) {		//Check that wave isn't 0, and that the value has changed
+			  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);	//Stop DMA
+			  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);	//Start DMA with new look up table
+			  *pl1 = wave1;	//set value to remember
+		  }
+
+		  //Same if statement, but for oscillator 2
+		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {
+			  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
+				  wave2 = 3;
+			  } else {
+				  wave2 = 2;
+			  }
+		  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
+			  wave2 = 1;
+		  } else {
+			  wave2 = 0;
+		  }
+		  if ((*pl2 != wave2) && wave2) {
+			  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
+			  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[wave2 - 1], 128, DAC_ALIGN_12B_R);
+			  *pl2 = wave2;
+		  }
+
+		  //same if statement for oscillator 3
+		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8)) {
+			  if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
+				  wave3 = 3;
+			  } else {
+				  wave3 = 2;
+			  }
+		  } else if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
+			  wave3 = 1;
+		  } else {
+			  wave3 = 0;
+		  }
+		  if ((*pl3 != wave3) && wave3) {
+			  HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
+			  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[wave3 - 1], 128, DAC_ALIGN_12B_R);
+			  *pl3 = wave3;
+		  }
+
+	return;
+}
 /* USER CODE END 4 */
 
 /**
