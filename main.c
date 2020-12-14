@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -78,6 +78,52 @@ uint32_t ADSR_LUT[NS] = { //Sine lookup table
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
+
+uint32_t Attack_LUT[NS] = { //Sine lookup table
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+uint32_t Decay_LUT[NS] = {  //Sine lookup table
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+uint32_t Release_LUT[NS] = {  //Sine lookup table
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+uint32_t Env_LUT[NS] = {  //Sine lookup table
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+
 
 uint32_t Square_LUT[NS] = { //Square wave look up table
   4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
@@ -153,7 +199,7 @@ void HAL_USART_RxCpltCallback(UART_HandleTypeDef *huart)  //MIDI receive interru
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint32_t temp = 0, i; //hold ARR calculated value
+  uint32_t temp = 0, i, env;  //hold ARR calculated value
   uint32_t reset = 1;
   float freq = 0; //for converting midi number to frequency
   struct Message midi_in;
@@ -218,6 +264,19 @@ int main(void)
       float sustain = sustainInput * 4096;
       float release = releaseRate * NS;
 
+      for (i = 0; i < NS; i ++) {
+        Attack_LUT[i] = i * 32;
+      }
+
+      for (i = 0; i < NS; i++) {
+        Decay_LUT[i] = 4096 - ((4096 - 1000) * i / NS);
+      }
+
+      for (i = 0; i < NS; i++) {
+        Env_LUT[i] = env;
+      }
+
+
       for (i = 0; i < NS; i++) {
         if (i <= attack) {
           ADSR_LUT[i] = i * (4096 / attack); //max value / attack gives # of steps
@@ -243,7 +302,7 @@ int main(void)
         switch (midi_in.channel) {
           case 0:
             htim2.Instance->ARR = 80000000/((50 + freq) * 128);
-            HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)ADSR_LUT, 128, DAC_ALIGN_12B_R);
+            HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Env_LUT, 128, DAC_ALIGN_12B_R);
             break;
           case 1:
             htim3.Instance->ARR = 80000000/((50 + freq) * 128);
@@ -272,6 +331,7 @@ int main(void)
 
       if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {  //Check if first ADC conversion is ready for oscillator 1
         adc_val = HAL_ADC_GetValue(&hadc1);   //Read ADC value
+        env = adc_val;
         attackRate = (float)adc_val / 4096;
           HAL_ADC_Start(&hadc1);    //Start ADC to get next conversion
       }
