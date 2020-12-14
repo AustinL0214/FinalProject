@@ -33,7 +33,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define NS 128
-//
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,45 +57,56 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
-uint32_t Sine_LUT[NS] = {	//Sine lookup table
-	2048, 2149, 2250, 2350, 2450, 2549, 2646, 2742, 2837, 2929, 3020, 3108, 3193, 3275, 3355, 3431,
-	3504, 3574, 3639, 3701, 3759, 3812, 3861, 3906, 3946, 3982, 4013, 4039, 4060, 4076, 4087, 4094,
-	4095, 4091, 4082, 4069, 4050, 4026, 3998, 3965, 3927, 3884, 3837, 3786, 3730, 3671, 3607, 3539,
-	3468, 3394, 3316, 3235, 3151, 3064, 2975, 2883, 2790, 2695, 2598, 2500, 2400, 2300, 2199, 2098,
-	1997, 1896, 1795, 1695, 1595, 1497, 1400, 1305, 1212, 1120, 1031, 944, 860, 779, 701, 627,
-	556, 488, 424, 365, 309, 258, 211, 168, 130, 97, 69, 45, 26, 13, 4, 0,
-	1, 8, 19, 35, 56, 82, 113, 149, 189, 234, 283, 336, 394, 456, 521, 591,
-	664, 740, 820, 902, 987, 1075, 1166, 1258, 1353, 1449, 1546, 1645, 1745, 1845, 1946, 2047
+uint32_t Sine_LUT[NS] = { //Sine lookup table
+  2048, 2149, 2250, 2350, 2450, 2549, 2646, 2742, 2837, 2929, 3020, 3108, 3193, 3275, 3355, 3431,
+  3504, 3574, 3639, 3701, 3759, 3812, 3861, 3906, 3946, 3982, 4013, 4039, 4060, 4076, 4087, 4094,
+  4095, 4091, 4082, 4069, 4050, 4026, 3998, 3965, 3927, 3884, 3837, 3786, 3730, 3671, 3607, 3539,
+  3468, 3394, 3316, 3235, 3151, 3064, 2975, 2883, 2790, 2695, 2598, 2500, 2400, 2300, 2199, 2098,
+  1997, 1896, 1795, 1695, 1595, 1497, 1400, 1305, 1212, 1120, 1031, 944, 860, 779, 701, 627,
+  556, 488, 424, 365, 309, 258, 211, 168, 130, 97, 69, 45, 26, 13, 4, 0,
+  1, 8, 19, 35, 56, 82, 113, 149, 189, 234, 283, 336, 394, 456, 521, 591,
+  664, 740, 820, 902, 987, 1075, 1166, 1258, 1353, 1449, 1546, 1645, 1745, 1845, 1946, 2047
 };
 
-uint32_t Square_LUT[NS] = {	//Square wave look up table
-	4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
-	4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
-	4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
-	4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+uint32_t ADSR_LUT[NS] = { //Sine lookup table
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-uint32_t Triangle_LUT[NS] = {	//Triangle wave look up table
-	63, 127, 191, 255, 319, 383, 447, 511, 575, 639, 703, 767, 831, 895, 959, 1023,
-	1087, 1151, 1215, 1279, 1343, 1407, 1471, 1535, 1599, 1663, 1727, 1791, 1855, 1919, 1983, 2047,
-	2111, 2175, 2239, 2303, 2367, 2431, 2495, 2559, 2623, 2687, 2751, 2815, 2879, 2943, 3007, 3071,
-	3135, 3199, 3263, 3327, 3391, 3455, 3519, 3583, 3647, 3711, 3775, 3839, 3903, 3967, 4031, 4095,
-	4032, 3968, 3904, 3840, 3776, 3712, 3648, 3584, 3520, 3456, 3392, 3328, 3264, 3200, 3136, 3072,
-	3008, 2944, 2880, 2816, 2752, 2688, 2624, 2560, 2496, 2432, 2368, 2304, 2240, 2176, 2112, 2048,
-	1984, 1920, 1856, 1792, 1728, 1664, 1600, 1536, 1472, 1408, 1344, 1280, 1216, 1152, 1088, 1024,
-	960, 896, 832, 768, 704, 640, 576, 512, 448, 384, 320, 256, 192, 128, 64, 0
+uint32_t Square_LUT[NS] = { //Square wave look up table
+  4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
+  4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
+  4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
+  4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-uint32_t last_1 = 0, last_2 = 0, last_3 = 0;	//for wave switching
+uint32_t Triangle_LUT[NS] = { //Triangle wave look up table
+  63, 127, 191, 255, 319, 383, 447, 511, 575, 639, 703, 767, 831, 895, 959, 1023,
+  1087, 1151, 1215, 1279, 1343, 1407, 1471, 1535, 1599, 1663, 1727, 1791, 1855, 1919, 1983, 2047,
+  2111, 2175, 2239, 2303, 2367, 2431, 2495, 2559, 2623, 2687, 2751, 2815, 2879, 2943, 3007, 3071,
+  3135, 3199, 3263, 3327, 3391, 3455, 3519, 3583, 3647, 3711, 3775, 3839, 3903, 3967, 4031, 4095,
+  4032, 3968, 3904, 3840, 3776, 3712, 3648, 3584, 3520, 3456, 3392, 3328, 3264, 3200, 3136, 3072,
+  3008, 2944, 2880, 2816, 2752, 2688, 2624, 2560, 2496, 2432, 2368, 2304, 2240, 2176, 2112, 2048,
+  1984, 1920, 1856, 1792, 1728, 1664, 1600, 1536, 1472, 1408, 1344, 1280, 1216, 1152, 1088, 1024,
+  960, 896, 832, 768, 704, 640, 576, 512, 448, 384, 320, 256, 192, 128, 64, 0
+};
+
+uint32_t last_1 = 0, last_2 = 0, last_3 = 0;  //for wave switching
 uint32_t *pl1 = &last_1;
 uint32_t *pl2 = &last_2;
 uint32_t *pl3 = &last_3;
-uint32_t adc_val = 1;	//hold adc read value
-uint32_t * LUTs[3] = {Sine_LUT, Square_LUT, Triangle_LUT};	//easy way to switch between waveforms
+uint32_t adc_val = 1; //hold adc read value
+uint32_t * LUTs[3] = {Sine_LUT, Square_LUT, Triangle_LUT};  //easy way to switch between waveforms
 uint8_t Rx_data[10]; //Array to hold MIDI Rx data
 struct Message {
    uint8_t type;
@@ -104,6 +114,11 @@ struct Message {
    uint8_t note;
    uint8_t velocity;
 };
+
+float attackRate = 0.3;
+float decayRate = 0.1;
+float releaseRate = 0.3;
+float sustainInput = 0.4;
 
 /* USER CODE END PV */
 
@@ -118,16 +133,15 @@ static void MX_DAC2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_USART1_UART_Init(void);
-
 /* USER CODE BEGIN PFP */
 void SetWaveState(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_USART_RxCpltCallback(UART_HandleTypeDef *huart)	//MIDI receive interrupt handling
+void HAL_USART_RxCpltCallback(UART_HandleTypeDef *huart)  //MIDI receive interrupt handling
 {
-	HAL_UART_Receive_IT(&huart1, Rx_data, 3);	//read 3 bytes from MIDI over UART
+  HAL_UART_Receive_IT(&huart1, Rx_data, 3); //read 3 bytes from MIDI over UART
 }
 
 /* USER CODE END 0 */
@@ -139,9 +153,9 @@ void HAL_USART_RxCpltCallback(UART_HandleTypeDef *huart)	//MIDI receive interrup
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint32_t temp = 0;	//hold ARR calculated value
+  uint32_t temp = 0, i; //hold ARR calculated value
   uint32_t reset = 1;
-  float freq = 0;	//for converting midi number to frequency
+  float freq = 0; //for converting midi number to frequency
   struct Message midi_in;
   /* USER CODE END 1 */
 
@@ -172,13 +186,13 @@ int main(void)
   MX_TIM4_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  //HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 1 start
-  //HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 2 start
-  //HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 3 start
-  HAL_TIM_Base_Start(&htim2);	//start timer for oscillator 1
-  HAL_TIM_Base_Start(&htim3);	//start timer for oscillator 2
-  HAL_TIM_Base_Start(&htim4);	//start timer for oscillator 3
-  HAL_ADC_Start(&hadc1);		//start ADC 1 for inputs to control frequencies
+  //HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);  //OSCILLATOR 1 start
+  //HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);  //OSCILLATOR 2 start
+  //HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);  //OSCILLATOR 3 start
+  HAL_TIM_Base_Start(&htim2); //start timer for oscillator 1
+  HAL_TIM_Base_Start(&htim3); //start timer for oscillator 2
+  HAL_TIM_Base_Start(&htim4); //start timer for oscillator 3
+  HAL_ADC_Start(&hadc1);    //start ADC 1 for inputs to control frequencies
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -189,89 +203,123 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  // MIDI Mode
-	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8)) {
-		  if (reset) {
-			  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-			  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
-			  HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
-			  reset = 0;
-		  }
-		  SetWaveState();
-		  HAL_UART_Receive_IT(&huart1, Rx_data, 3);
-		  midi_in.type = Rx_data[0] & 0xF0;
-		  midi_in.channel = Rx_data[0] & 0x0F;
-		  midi_in.note = Rx_data[1];
-		  midi_in.velocity = Rx_data[2];
-		  if(midi_in.type == 0x90) {
-			  freq = pow(2, (((float)midi_in.note-69)/12)) * 440;
-			  switch (midi_in.channel) {
-				  case 0:
-					  htim2.Instance->ARR = 80000000/((50 + freq) * 128);
-					  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
-					  break;
-				  case 1:
-					  htim3.Instance->ARR = 80000000/((50 + freq) * 128);
-					  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
-					  break;
-				  case 2:
-					  htim4.Instance->ARR = 80000000/((50 + freq) * 128);
-					  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
-					  break;
-			  }
-		  }
-		  if(midi_in.type == 0x80 || midi_in.velocity == 0x00) {
-			  switch (midi_in.channel) {
-				  case 0:
-					  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-					  break;
-				  case 1:
-					  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
-					  break;
-				  case 2:
-					  HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
-					  break;
-				}
-		  }
-	  }
+    // MIDI Mode
+    if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8)) {
+      if (reset) {
+        HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+        HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
+        HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
+        reset = 0;
+      }
+      //SetWaveState();
+
+      float attack = attackRate * NS;
+      float decay = decayRate * NS;
+      float sustain = sustainInput * 4096;
+      float release = releaseRate * NS;
+
+      for (i = 0; i < NS; i++) {
+        if (i <= attack) {
+          ADSR_LUT[i] = i * (4096 / attack); //max value / attack gives # of steps
+        }
+        else if (i <= attack + decay) {
+          ADSR_LUT[i] = 4096 - ((4096 - sustain) * (i - attack) / decay); // same as attack but negative slope, need to subtract attack from i to "reset"
+        }
+        else if (i <= NS - release) {
+          ADSR_LUT[i] = sustain;  // hold sustain
+        }
+        else {
+          ADSR_LUT[i] = (sustain * (NS - i)) / release; //negative slope using remaining points
+        }
+      }
+
+      HAL_UART_Receive_IT(&huart1, Rx_data, 3);
+      midi_in.type = Rx_data[0] & 0xF0;
+      midi_in.channel = Rx_data[0] & 0x0F;
+      midi_in.note = Rx_data[1];
+      midi_in.velocity = Rx_data[2];
+      if(midi_in.type == 0x90) {
+        freq = pow(2, (((float)midi_in.note-69)/12)) * 440;
+        switch (midi_in.channel) {
+          case 0:
+            htim2.Instance->ARR = 80000000/((50 + freq) * 128);
+            HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)ADSR_LUT, 128, DAC_ALIGN_12B_R);
+            break;
+          case 1:
+            htim3.Instance->ARR = 80000000/((50 + freq) * 128);
+            HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
+            break;
+          case 2:
+            htim4.Instance->ARR = 80000000/((50 + freq) * 128);
+            HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
+            break;
+        }
+      }
+      if(midi_in.type == 0x80 || midi_in.velocity == 0x00) {
+        switch (midi_in.channel) {
+          case 0:
+            HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+            break;
+          case 1:
+            HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
+            break;
+          case 2:
+            HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
+            break;
+        }
+      }
 
 
-	  //Control Voltage Mode
-	  if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8)) {
-		  reset = 1;
-		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 1 start
-		  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 2 start
-		  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);	//OSCILLATOR 3 start
-		  //Three *almost* identical if statements to check the GPIO pins for
-		  //each waveform. Two switches for each give us four possible values.
-		  //wave values -
-		  //3: Triangle
-		  //2: Square
-		  //1: Sine
-		  //0: No change in waveform
-		  SetWaveState();
+      if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {  //Check if first ADC conversion is ready for oscillator 1
+        adc_val = HAL_ADC_GetValue(&hadc1);   //Read ADC value
+        attackRate = (float)adc_val / 4096;
+          HAL_ADC_Start(&hadc1);    //Start ADC to get next conversion
+      }
+      if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {  //Conversion for oscillator 2
+        adc_val = HAL_ADC_GetValue(&hadc1);
+          decayRate = (float)adc_val / 4096;
+          HAL_ADC_Start(&hadc1);
+      }
+      if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) { //Conversion for oscillator 3
+        adc_val = HAL_ADC_GetValue(&hadc1);
+          releaseRate = (float)adc_val / 4096;
+          HAL_ADC_Start(&hadc1);
+      }
 
-		  //Three *almost* identical if statements to check ADC value and update frequency
-		  //ADC is configured to have 3 continuous conversions to read 3 different channels.
-		  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {	//Check if first ADC conversion is ready for oscillator 1
-				adc_val = HAL_ADC_GetValue(&hadc1);		//Read ADC value
-				temp =  80000000/((50 + adc_val) * 128);	//Do calculation to get ARR value for timer
-				htim2.Instance->ARR = temp;		//Set ARR
-				HAL_ADC_Start(&hadc1);		//Start ADC to get next conversion
-		  }
-		  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {	//Conversion for oscillator 2
-					adc_val = HAL_ADC_GetValue(&hadc1);
-					temp =  80000000/((50 + adc_val) * 128);
-					htim3.Instance->ARR = temp;	//Update timer 3 to change oscillator 2 frequency
-					HAL_ADC_Start(&hadc1);
-		  }
-		  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) { //Conversion for oscillator 3
-					adc_val = HAL_ADC_GetValue(&hadc1);
-					temp =  80000000/((50 + adc_val) * 128);
-					htim4.Instance->ARR = temp;
-					HAL_ADC_Start(&hadc1);
-		  }
-	  }
+    }
+
+
+    //Control Voltage Mode
+    if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8)) {
+      reset = 1;
+
+      HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);  //OSCILLATOR 1 start
+      HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)Square_LUT, 128, DAC_ALIGN_12B_R);  //OSCILLATOR 2 start
+      HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)Triangle_LUT, 128, DAC_ALIGN_12B_R);  //OSCILLATOR 3 start
+
+      SetWaveState();
+
+      //Three *almost* identical if statements to check ADC value and update frequency
+      //ADC is configured to have 3 continuous conversions to read 3 different channels.
+      if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {  //Check if first ADC conversion is ready for oscillator 1
+        adc_val = HAL_ADC_GetValue(&hadc1);   //Read ADC value
+        temp =  80000000/((50 + adc_val) * 128);  //Do calculation to get ARR value for timer
+        htim2.Instance->ARR = temp;   //Set ARR
+        HAL_ADC_Start(&hadc1);    //Start ADC to get next conversion
+      }
+      if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {  //Conversion for oscillator 2
+          adc_val = HAL_ADC_GetValue(&hadc1);
+          temp =  80000000/((50 + adc_val) * 128);
+          htim3.Instance->ARR = temp; //Update timer 3 to change oscillator 2 frequency
+          HAL_ADC_Start(&hadc1);
+      }
+      if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) { //Conversion for oscillator 3
+          adc_val = HAL_ADC_GetValue(&hadc1);
+          temp =  80000000/((50 + adc_val) * 128);
+          htim4.Instance->ARR = temp;
+          HAL_ADC_Start(&hadc1);
+      }
+    }
   }
   /* USER CODE END 3 */
 }
@@ -768,69 +816,69 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void SetWaveState(void) {
 
-	  uint32_t wave1 = 0, wave2 = 0, wave3 = 0;		//for wave switching
-	  //Three *almost* identical if statements to check the GPIO pins for
-	  //each waveform. Two switches for each give us four possible values.
-	  //wave values -
-	  //3: Triangle
-	  //2: Square
-	  //1: Sine
-	  //0: No change in waveform
+    uint32_t wave1 = 0, wave2 = 0, wave3 = 0;   //for wave switching
+    //Three *almost* identical if statements to check the GPIO pins for
+    //each waveform. Two switches for each give us four possible values.
+    //wave values -
+    //3: Triangle
+    //2: Square
+    //1: Sine
+    //0: No change in waveform
 
-	  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12)) {	//check pin status, pull-up resistor means switch will pull pin low
-			  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
-				  wave1 = 3;	//If both switches are on
-			  } else {
-				  wave1 = 2;	//If only first switch is on
-			  }
-		  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
-			  wave1 = 1;		//If only last switch is on
-		  } else {
-			  wave1 = 0;		//If no switch is on
-		  }
-		  if ((*pl1 != wave1) && wave1) {		//Check that wave isn't 0, and that the value has changed
-			  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);	//Stop DMA
-			  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R);	//Start DMA with new look up table
-			  *pl1 = wave1;	//set value to remember
-		  }
+    if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12)) { //check pin status, pull-up resistor means switch will pull pin low
+        if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
+          wave1 = 3;  //If both switches are on
+        } else {
+          wave1 = 2;  //If only first switch is on
+        }
+      } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11)) {
+        wave1 = 1;    //If only last switch is on
+      } else {
+        wave1 = 0;    //If no switch is on
+      }
+      if ((*pl1 != wave1) && wave1) {   //Check that wave isn't 0, and that the value has changed
+        HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);  //Stop DMA
+        HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[wave1 - 1], 128, DAC_ALIGN_12B_R); //Start DMA with new look up table
+        *pl1 = wave1; //set value to remember
+      }
 
-		  //Same if statement, but for oscillator 2
-		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {
-			  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
-				  wave2 = 3;
-			  } else {
-				  wave2 = 2;
-			  }
-		  } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
-			  wave2 = 1;
-		  } else {
-			  wave2 = 0;
-		  }
-		  if ((*pl2 != wave2) && wave2) {
-			  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
-			  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[wave2 - 1], 128, DAC_ALIGN_12B_R);
-			  *pl2 = wave2;
-		  }
+      //Same if statement, but for oscillator 2
+      if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {
+        if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
+          wave2 = 3;
+        } else {
+          wave2 = 2;
+        }
+      } else if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {
+        wave2 = 1;
+      } else {
+        wave2 = 0;
+      }
+      if ((*pl2 != wave2) && wave2) {
+        HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
+        HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[wave2 - 1], 128, DAC_ALIGN_12B_R);
+        *pl2 = wave2;
+      }
 
-		  //same if statement for oscillator 3
-		  if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8)) {
-			  if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
-				  wave3 = 3;
-			  } else {
-				  wave3 = 2;
-			  }
-		  } else if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
-			  wave3 = 1;
-		  } else {
-			  wave3 = 0;
-		  }
-		  if ((*pl3 != wave3) && wave3) {
-			  HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
-			  HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[wave3 - 1], 128, DAC_ALIGN_12B_R);
-			  *pl3 = wave3;
-		  }
+      //same if statement for oscillator 3
+      if(!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8)) {
+        if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
+          wave3 = 3;
+        } else {
+          wave3 = 2;
+        }
+      } else if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9)) {
+        wave3 = 1;
+      } else {
+        wave3 = 0;
+      }
+      if ((*pl3 != wave3) && wave3) {
+        HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
+        HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[wave3 - 1], 128, DAC_ALIGN_12B_R);
+        *pl3 = wave3;
+      }
 
-	return;
+  return;
 }
 /* USER CODE END 4 */
 
