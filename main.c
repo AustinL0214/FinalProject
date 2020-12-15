@@ -47,11 +47,9 @@ DAC_HandleTypeDef hdac1;
 DAC_HandleTypeDef hdac2;
 DAC_HandleTypeDef hdac3;
 DAC_HandleTypeDef hdac4;
-DMA_HandleTypeDef hdma_dac1_ch1;
 DMA_HandleTypeDef hdma_dac1_ch2;
+DMA_HandleTypeDef hdma_dac1_ch1;
 DMA_HandleTypeDef hdma_dac2_ch1;
-DMA_HandleTypeDef hdma_dac3_ch1;
-DMA_HandleTypeDef hdma_dac3_ch2;
 
 OPAMP_HandleTypeDef hopamp3;
 OPAMP_HandleTypeDef hopamp4;
@@ -60,7 +58,6 @@ OPAMP_HandleTypeDef hopamp6;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
-TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart1;
 
@@ -141,7 +138,6 @@ static void MX_TIM4_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_DAC3_Init(void);
 static void MX_OPAMP6_Init(void);
-static void MX_TIM6_Init(void);
 static void MX_DAC4_Init(void);
 static void MX_OPAMP3_Init(void);
 static void MX_OPAMP4_Init(void);
@@ -166,7 +162,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   //uint32_t i;
-  uint32_t temp = 0, env1, env2, env3;  //temp to hold ARR value, env for envelope amplitude
+  uint32_t temp = 0, env1 = 0, env2 = 0, env3 = 0;  //temp to hold ARR value, env for envelope amplitude
   uint32_t reset = 1; //used to reset DMA when switching between CV and MIDI
   float freq = 0; //for converting midi number to frequency
   struct Message midi_in; //structure for midi data
@@ -201,7 +197,6 @@ int main(void)
   MX_USART1_UART_Init();
   MX_DAC3_Init();
   MX_OPAMP6_Init();
-  MX_TIM6_Init();
   MX_DAC4_Init();
   MX_OPAMP3_Init();
   MX_OPAMP4_Init();
@@ -211,10 +206,13 @@ int main(void)
   HAL_TIM_Base_Start(&htim3); //start timer for oscillator 2
   HAL_TIM_Base_Start(&htim4); //start timer for oscillator 3
 
-  HAL_TIM_Base_Start(&htim6); //start timer for CV 1
+  HAL_DAC_Start(&hdac3,DAC_CHANNEL_1);
+  HAL_DAC_Start(&hdac3,DAC_CHANNEL_2);
+  HAL_DAC_Start(&hdac4,DAC_CHANNEL_1);
+
+  HAL_OPAMP_Start(&hopamp3);  //OP amp follower to output internal DAC to external pin
+  HAL_OPAMP_Start(&hopamp4);  //OP amp follower to output internal DAC to external pin
   HAL_OPAMP_Start(&hopamp6);  //OP amp follower to output internal DAC to external pin
-  htim6.Instance->ARR = 80000000/((100) * 128);
-  HAL_DAC_Start_DMA(&hdac3, DAC_CHANNEL_1, (uint32_t*)Sine_LUT, 128, DAC_ALIGN_12B_R);
 
   HAL_ADC_Start(&hadc1);    //start ADC 1 for inputs to control frequencies
 
@@ -277,15 +275,18 @@ int main(void)
         freq = pow(2, (((float)midi_in.note-69)/12)) * 440; // Equation used to convert MIDI number to frequency as taken from the University of New South Wales
         switch (midi_in.channel) {  // MIDI will be sent to one of 3 channels, for the 3 oscillators in this project
           case 0: // For each case, update timer frequency and output waveform to the corresponding channel
+            HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_1, DAC_ALIGN_12B_R, env1);
             htim2.Instance->ARR = 80000000/((freq) * 128);  // Set frequency of timer
             HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t*)LUTs[*pl1 - 1], 128, DAC_ALIGN_12B_R);  // Start DMA with lookup table given by SetWaveState()
             //HAL_DAC_Start_DMA(&hdac3, DAC_CHANNEL_1, (uint32_t*)LUTs[0], 128, DAC_ALIGN_12B_R);
             break;
           case 1: // Same as case 0
+            HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, env2);
             htim3.Instance->ARR = 80000000/((freq) * 128);
             HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_2, (uint32_t*)LUTs[*pl2 - 1], 128, DAC_ALIGN_12B_R);
             break;
           case 2: // Same as case 0
+            HAL_DAC_SetValue(&hdac4, DAC_CHANNEL_1, DAC_ALIGN_12B_R, env3);
             htim4.Instance->ARR = 80000000/((freq) * 128);
             HAL_DAC_Start_DMA(&hdac2, DAC_CHANNEL_1, (uint32_t*)LUTs[*pl3 - 1], 128, DAC_ALIGN_12B_R);
             break;
@@ -295,12 +296,15 @@ int main(void)
       if(midi_in.type == 0x80 || midi_in.velocity == 0x00) {
         switch (midi_in.channel) {
           case 0: // If note off received, stop DMA
+            HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 0);
             HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
             break;
           case 1:
+            HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, 0);
             HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_2);
             break;
           case 2:
+            HAL_DAC_SetValue(&hdac4, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 0);
             HAL_DAC_Stop_DMA(&hdac2, DAC_CHANNEL_1);
             break;
         }
@@ -625,7 +629,7 @@ static void MX_DAC3_Init(void)
   sConfig.DAC_DMADoubleDataMode = DISABLE;
   sConfig.DAC_SignedFormat = DISABLE;
   sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
-  sConfig.DAC_Trigger = DAC_TRIGGER_T6_TRGO;
+  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
   sConfig.DAC_Trigger2 = DAC_TRIGGER_NONE;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_DISABLE;
   sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_INTERNAL;
@@ -636,7 +640,6 @@ static void MX_DAC3_Init(void)
   }
   /** DAC channel OUT2 config
   */
-  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
   sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_INTERNAL;
   if (HAL_DAC_ConfigChannel(&hdac3, &sConfig, DAC_CHANNEL_2) != HAL_OK)
   {
@@ -925,44 +928,6 @@ static void MX_TIM4_Init(void)
 }
 
 /**
-  * @brief TIM6 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM6_Init(void)
-{
-
-  /* USER CODE BEGIN TIM6_Init 0 */
-
-  /* USER CODE END TIM6_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM6_Init 1 */
-
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 0;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 624;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM6_Init 2 */
-
-  /* USER CODE END TIM6_Init 2 */
-
-}
-
-/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1030,12 +995,6 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
-  /* DMA1_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-  /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
 }
 
