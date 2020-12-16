@@ -15,7 +15,7 @@ for c = a
 end
 saw_wave(128) = 4095;   % last value 4095
 % plot(a, saw_wave);
-disp(saw_wave);     
+%disp(saw_wave);     
 % output to C code
 fprintf("uint32_t Saw_LUT[NS] = {\n");
 fprintf("\t");
